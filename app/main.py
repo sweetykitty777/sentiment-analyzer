@@ -1,15 +1,15 @@
-import io
+from typing import Annotated
 
-import pandas as pd
-from fastapi import FastAPI, UploadFile, APIRouter, Query
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-from .models.sentiment_check import SentimentCheckResponse
-from .services.sentiment_predict import SentimentPredict
+from fastapi.security import OAuth2AuthorizationCodeBearer
+import jwt
+from .routes.check import router as check_router
+from .routes.uploads import router as file_router
 
 app = FastAPI(title="sentiment-analyzer")
 
-api_router = APIRouter(prefix="/api/v1")
+api_router = APIRouter(prefix="/api/v1/sentiment")
 
 origins = [
     "*",
@@ -23,22 +23,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-predict = SentimentPredict()
+oauth_2_scheme = OAuth2AuthorizationCodeBearer(
+    tokenUrl="http://localhost:8085/realms/org/protocol/openid-connect/token",
+    authorizationUrl="http://localhost:8085/realms/org/protocol/openid-connect/auth",
+    refreshUrl="http://localhost:8085/realms/org/protocol/openid-connect/token",
+)
 
 
-@api_router.get("/sentiment_check")
-def read_item(text: str = Query(min_length=1, max_length=512)) -> SentimentCheckResponse:
-    return SentimentCheckResponse(text=text, sentiment=predict.predict(text))
+async def valid_access_token(
+    access_token: Annotated[str, Depends(oauth_2_scheme)]
+):
+    url = "http://localhost:8085/realms/org/protocol/openid-connect/certs"
+    optional_custom_headers = {"User-agent": "custom-user-agent"}
+    jwks_client = jwt.PyJWKClient(url, headers=optional_custom_headers)
+
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(access_token)
+        data = jwt.decode(
+            access_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience="profile",
+            options={"verify_exp": True, "verify_aud": False},
+        )
+        return data
+    except jwt.exceptions.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Not authenticated: {e}")
 
 
-@api_router.get("/sentiment_check/file")
-async def read_item(file: UploadFile) -> list[dict]:
-    b = await file.read()
-    df = pd.read_excel(io.BytesIO(b), header=None, index_col=None)
-    df.columns = ['text']
-    df['prediction'] = df.iloc[:, 0].apply(lambda x: predict.predict(x).name)
-
-    return df.to_dict(orient="records")
+@app.get("/", dependencies=[Depends(valid_access_token)])
+async def read_root():
+    return {"Hello": "World"}
 
 
+api_router.include_router(file_router)
+api_router.include_router(check_router)
 app.include_router(api_router)
