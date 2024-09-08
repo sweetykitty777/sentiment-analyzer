@@ -1,5 +1,8 @@
-from pydantic import BaseModel
+from pydantic import EmailStr
+from sqlmodel import SQLModel, Field
 
 
-class User(BaseModel):
-    user_id: int
+class User(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    email: EmailStr
+    organization: str
