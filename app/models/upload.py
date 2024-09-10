@@ -1,9 +1,18 @@
+import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import UUID4
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from app.services.sentiment_predict import SentimentPredictLevel
+
+
+class UploadStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    ERROR = "error"
 
 
 class UploadBase(SQLModel):
@@ -11,10 +20,10 @@ class UploadBase(SQLModel):
 
 
 class Upload(UploadBase, table=True):
-    id: UUID4 | None = Field(default=None, primary_key=True)
+    id: int = Field(primary_key=True, default=None)
     created_at: datetime = Field(default=datetime.now())
     created_by: str = Field(foreign_key="user.id")
-
+    status: UploadStatus = UploadStatus.PENDING
     entries: list["UploadEntry"] = Relationship(back_populates="upload")
 
 
@@ -22,6 +31,7 @@ class UploadPublic(UploadBase):
     id: int
     created_at: datetime
     created_by: str | None = None
+    status: UploadStatus
 
 
 class UploadWithEntries(UploadPublic):

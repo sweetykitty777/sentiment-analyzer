@@ -1,11 +1,12 @@
 import io
 
 import pandas as pd
-from fastapi import APIRouter, UploadFile, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from sqlmodel import Session, select
 
+from app.broker import process_upload
 from app.dependencies import get_session, get_user
-from app.models.upload import Upload, UploadEntry, UploadWithEntries
+from app.models.upload import Upload, UploadEntry, UploadStatus, UploadWithEntries
 from app.models.user import User
 from app.services.sentiment_predict import SentimentPredict
 
@@ -34,9 +35,8 @@ async def upload_file(file: UploadFile,
     b = await file.read()
     df = pd.read_excel(io.BytesIO(b), header=None, index_col=None)
     df.columns = ['text']
-    df['prediction'] = df.iloc[:, 0].apply(lambda x: predict.predict(x).name)
 
-    upload = Upload(name=file.filename, created_by=user.id)
+    upload = Upload(name=file.filename, created_by=user.id, status=UploadStatus.PENDING)
     session.add(upload)
     session.commit()
     session.refresh(upload)
@@ -44,13 +44,14 @@ async def upload_file(file: UploadFile,
     entries = []
     p = 0
     for i, row in df.iterrows():
-        entry = UploadEntry(upload_id=upload.id, text=row['text'], sentiment=row['prediction'], id=p)
+        entry = UploadEntry(upload_id=upload.id, text=row['text'], sentiment=None, id=p)
         session.add(entry)
         entries.append(entry)
         p += 1
 
     session.commit()
     session.refresh(upload)
+    await process_upload.kiq(upload_id=upload.id)
 
     return upload
 
