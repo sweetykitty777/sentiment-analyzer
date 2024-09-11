@@ -10,7 +10,7 @@ from .broker import broker
 
 app = FastAPI(title="sentiment-analyzer")
 
-api_router = APIRouter(prefix="/api/v1/sentiment")
+api_router = APIRouter(prefix="/api/v1")
 
 origins = [
     "*",
@@ -34,11 +34,6 @@ async def app_startup():
 async def app_shutdown():
     if not broker.is_worker_process:
         await broker.shutdown()
-
-@app.get("/", dependencies=[Depends(get_oidc_keycloak_user)])
-async def read_root():
-    return {"Hello": "World"}
-
 
 api_router.include_router(user_router)
 api_router.include_router(upload_router)

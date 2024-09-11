@@ -2,15 +2,15 @@ from enum import Enum
 
 import numpy as np
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 class SentimentPredictLevel(str, Enum):
-    VERY_NEGATIVE = "VERY_NEGATIVE"
-    NEGATIVE = "NEGATIVE"
-    NEUTRAL = "NEUTRAL"
-    POSITIVE = "POSITIVE"
-    VERY_POSITIVE = "VERY_POSITIVE"
+    VERY_NEGATIVE = "very_negative"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    POSITIVE = "positive"
+    VERY_POSITIVE = "very_positive"
 
 
 mapper = {
