@@ -1,6 +1,8 @@
+# --extra-index-url https://download.pytorch.org/whl/cpu
+
 fastapi[standard]==0.114.0
 transformers==4.44.2
-torch==2.2.2 --find-links https://download.pytorch.org/whl/cpu
+torch
 python-multipart==0.0.9
 pandas==2.2.2
 openpyxl==3.1.5

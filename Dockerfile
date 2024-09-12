@@ -3,4 +3,10 @@ WORKDIR /code
 COPY ./requirements-docker.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./app /code/app
-CMD ["fastapi", "run", "app/main.py", "--port", "8000", "--workers", "3"]
+
+COPY ./run.sh /code/run.sh
+RUN chmod +x /code/run.sh
+
+EXPOSE 8000
+
+CMD ["/code/run.sh"]

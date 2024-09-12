@@ -1,12 +1,12 @@
-from fastapi import FastAPI, APIRouter, Depends
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2AuthorizationCodeBearer
 
+from .broker import broker
 from .dependencies import get_oidc_keycloak_user
 from .routes.check import router as check_router
 from .routes.uploads import router as upload_router
 from .routes.users import router as user_router
-from .broker import broker
 
 app = FastAPI(title="sentiment-analyzer")
 
