@@ -7,10 +7,10 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 fastapi = {extras = ["standard"], version = "^0.114.0"}
 transformers = "^4.44.2"
-torch = ">=2.2.2,<2.3.0"
+torch = {version = "2.2.2+cpu", source="pytorch"}
 python-multipart = "^0.0.9"
 pandas = "^2.2.2"
 openpyxl = "^3.1.5"
@@ -22,6 +22,11 @@ taskiq-aio-pika = "^0.4.1"
 numpy = ">=1.26.4,<1.27.0"
 taskiq-fastapi = "^0.3.2"
 
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

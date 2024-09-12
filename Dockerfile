@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.12-slim
 ARG DATABASE_URL
 ENV DATABASE_URL=$DB_URL
 WORKDIR /code
@@ -7,4 +7,4 @@ COPY ./pyproject.toml /code/pyproject.toml
 COPY ./poetry.lock /code/poetry.lock
 RUN poetry install
 COPY ./app /code/app
-CMD ["poetry", "run", "fastapi", "run", "app/main.py", "--port", "8000"]
+CMD ["poetry", "run", "python3", "-m", "fastapi", "run", "app/main.py", "--port", "8000"]
