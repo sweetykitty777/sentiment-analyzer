@@ -1,6 +1,4 @@
 FROM python:3.12-slim
-ARG DATABASE_URL
-ENV DATABASE_URL=$DB_URL
 WORKDIR /code
 RUN pip3 install poetry
 COPY ./pyproject.toml /code/pyproject.toml
