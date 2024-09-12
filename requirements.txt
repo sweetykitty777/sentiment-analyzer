@@ -1,0 +1,13 @@
+fastapi[standard]==0.114.0
+transformers==4.44.2
+torch==2.2.2 --find-links https://download.pytorch.org/whl/cpu
+python-multipart==0.0.9
+pandas==2.2.2
+openpyxl==3.1.5
+pydantic==2.9.0
+pyjwt[crypto]==2.9.0
+sqlmodel==0.0.22
+taskiq==0.11.7
+taskiq-aio-pika==0.4.1
+numpy>=1.26.4,<1.27.0
+taskiq-fastapi==0.3.2
