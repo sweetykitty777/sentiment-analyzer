@@ -13,4 +13,5 @@ class IDToken(BaseModel):
 
 class KeycloakIDToken(IDToken):
     email: str
-    organization: dict[str, dict]
+    organization: dict[str, dict] | None = None
+

@@ -13,3 +13,5 @@ taskiq==0.11.7
 taskiq-aio-pika==0.4.1
 numpy>=1.26.4,<1.27.0
 taskiq-fastapi==0.3.2
+psycopg2-binary
+

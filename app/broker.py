@@ -15,12 +15,11 @@ broker = AioPikaBroker(
 
 predictor = SentimentPredict()
 
-# taskiq_fastapi.init(broker, "app.main:app")
-
 
 @broker.task
 async def process_upload(upload_id: str):
     print(f"Processing upload {upload_id}")
+
     with Session(engine) as session:
         entries = session.exec(
             select(UploadEntry).where(UploadEntry.upload_id == upload_id)

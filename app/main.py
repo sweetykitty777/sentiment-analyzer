@@ -13,11 +13,12 @@ from .routes.users import router as user_router
 async def lifespan(_: FastAPI):
     if not broker.is_worker_process:
         await broker.startup()
-    
+
     yield
-    
+
     if not broker.is_worker_process:
         await broker.shutdown()
+
 
 app = FastAPI(title="sentiment-analyzer", lifespan=lifespan)
 
@@ -34,7 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 api_router.include_router(user_router)
 api_router.include_router(upload_router)

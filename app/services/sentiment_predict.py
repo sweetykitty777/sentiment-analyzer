@@ -28,7 +28,14 @@ model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
 class SentimentPredict:
     def predict(self, value: str) -> SentimentPredictLevel:
-        inputs = tokenizer(value.lower(), return_tensors="pt", truncation=True, padding=True, max_length=512)
+        inputs = tokenizer(
+            value.lower(),
+            return_tensors="pt",
+            truncation=True,
+            padding=True,
+            max_length=512,
+        )
+        
         with torch.no_grad():
             outputs = model(**inputs)
 

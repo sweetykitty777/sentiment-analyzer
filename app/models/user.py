@@ -10,5 +10,5 @@ if TYPE_CHECKING:
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True)
     email: EmailStr
-    organization: str
+    organization: str | None = None
     uploads: list["Upload"] = Relationship(back_populates="created_by")

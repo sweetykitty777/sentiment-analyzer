@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.services.sentiment_predict import SentimentPredictLevel
 
