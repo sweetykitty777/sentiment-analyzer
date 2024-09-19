@@ -88,6 +88,7 @@ def get_upload_from_path(
     if not upload:
         raise HTTPException(status_code=404, detail="Upload not found")
 
+    return upload
     if upload.created_by_user_id == user.id:
         return upload
 
