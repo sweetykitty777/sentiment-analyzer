@@ -17,3 +17,9 @@ class UploadAccess(SQLModel, table=True):
     recipient_id: str
     recipient_type: AccessRecipientType
     upload_id: int = Field(foreign_key="upload.id")
+
+class UploadAccessRecipientResponse(BaseModel):
+    recipient_id: str
+    name: str
+    recipient_type: AccessRecipientType
+

@@ -22,6 +22,7 @@ mapper = {
 }
 
 model_name = "tabularisai/robust-sentiment-analysis"
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(model_name)
 

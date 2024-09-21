@@ -16,7 +16,7 @@ engine = create_engine(settings.database_url)
 SQLModel.metadata.create_all(engine)
 
 
-def get_session() -> Session:
+def get_session() -> Session:  # type: ignore
     with Session(engine) as session:
         yield session
 
@@ -32,7 +32,14 @@ async def get_oidc_keycloak_user(
     url = f"{settings.oidc_base_url}/protocol/openid-connect/certs"
 
     optional_custom_headers = {"User-agent": "custom-user-agent"}
-    token = access_token.split(" ")[1]
+
+    splited = access_token.split(" ")
+
+    if len(splited) != 2:
+        raise HTTPException(status_code=401, detail="Invalid auth token")
+
+    token = splited[1]
+
     jwks_client = jwt.PyJWKClient(url, headers=optional_custom_headers)
 
     try:
@@ -72,11 +79,12 @@ def get_user(
         return current_user
 
     if db_user != current_user:
-        session.add(current_user)
+        db_user.email = current_user.email
+        db_user.organization = current_user.organization
         session.commit()
-        session.refresh(current_user)
+        session.refresh(db_user)
 
-    return current_user
+    return db_user
 
 
 def get_upload_from_path(
@@ -88,7 +96,6 @@ def get_upload_from_path(
     if not upload:
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    return upload
     if upload.created_by_user_id == user.id:
         return upload
 
@@ -111,4 +118,4 @@ def get_upload_from_path(
         if access:
             return upload
 
-    raise HTTPException(status_code=403, detail="No acces to upload")
+    raise HTTPException(status_code=403, detail="No access to upload")

@@ -18,12 +18,13 @@ from app.models.upload import (
 from app.models.upload_access import (
     AccessRecipientType,
     UploadAccess,
+    UploadAccessRecipientResponse,
     UploadAccessRequest,
 )
 from app.models.user import User
 from app.services.sentiment_predict import SentimentPredict
 
-router = APIRouter()
+router = APIRouter(tags=["Uploads"])
 
 predict = SentimentPredict()
 
@@ -145,11 +146,42 @@ async def upload_file(
 def get_upload_share(
     session: Session = Depends(get_session),
     upload: Upload = Depends(get_upload_from_path),
-) -> list[UploadAccess]:
-    res = session.exec(
-        select(UploadAccess).where(UploadAccess.upload_id == upload.id)
+) -> list[UploadAccessRecipientResponse]:
+    
+    res: list[UploadAccessRecipientResponse] = []
+
+    users = session.exec(
+        select(UploadAccess)
+        .where(UploadAccess.upload_id == upload.id)
+        .where(UploadAccess.recipient_type == AccessRecipientType.USER)
     ).all()
-    return list(res)
+
+    for user in users:
+        user_in_db = session.exec(select(User).where(User.id == user.recipient_id)).first()
+        res.append(
+            UploadAccessRecipientResponse(
+                recipient_id=user.recipient_id,
+                recipient_type=user.recipient_type,
+                name=user_in_db.email,
+            )
+        )
+
+    orgs = session.exec(
+        select(UploadAccess)
+        .where(UploadAccess.upload_id == upload.id)
+        .where(UploadAccess.recipient_type == AccessRecipientType.ORG)
+    ).all()
+
+    for org in orgs:
+        res.append(
+            UploadAccessRecipientResponse(
+                recipient_id=org.recipient_id,
+                recipient_type=org.recipient_type,
+                name=org.recipient_id,
+            )
+        )
+
+    return res
 
 
 @router.post("/uploads/{upload_id}/share", summary="Share the upload with a user")
@@ -159,29 +191,52 @@ def share_upload(
     session: Session = Depends(get_session),
     upload: Upload = Depends(get_upload_from_path),
 ):
+    res = session.exec(
+        select(UploadAccess)
+        .where(UploadAccess.upload_id == upload.id)
+        .where(UploadAccess.recipient_id == request.recipient_id)
+        .where(UploadAccess.recipient_type == request.recipient_type)
+    ).first()
+
+    if res:
+        raise HTTPException(status_code=400, detail="Already shared with this user")
+
     if request.recipient_type == AccessRecipientType.USER:
-        if request.recipient_id == user.id:
-            raise HTTPException(status_code=400, detail="Cannot share with yourself")
-        recipient = session.exec(
-            select(User).where(User.id == request.recipient_id)
+        share_to_user = session.exec(
+            select(User).where(User.email == request.recipient_id)
         ).first()
-        if not recipient:
-            raise HTTPException(status_code=404, detail="User not found")
-    elif request.recipient_type == AccessRecipientType.ORG:
+
+        if not share_to_user:
+            raise HTTPException(status_code=404, detail="User with such email not found")
+    
+        if share_to_user.id == user.id:
+            raise HTTPException(status_code=400, detail="Cannot share with yourself")
+        
+        access = UploadAccess(
+            upload_id=upload.id,
+            recipient_id=share_to_user.id,
+            recipient_type=request.recipient_type,
+        )
+
+        session.add(access)
+        session.commit()
+        return access
+
+    else:
         recipient = session.exec(
-            select(User).where(User.org_id == request.recipient_id)
+            select(User).where(User.organization == request.recipient_id)
         ).first()
         if not recipient:
             raise HTTPException(status_code=404, detail="Org not found")
 
-    access = UploadAccess(
-        upload_id=upload.id,
-        recipient_id=request.recipient_id,
-        recipient_type=request.recipient_type,
-    )
-    session.add(access)
-    session.commit()
-    return access
+        access = UploadAccess(
+            upload_id=upload.id,
+            recipient_id=request.recipient_id,
+            recipient_type=request.recipient_type,
+        )
+        session.add(access)
+        session.commit()
+        return access
 
 
 @router.delete(
@@ -195,10 +250,10 @@ def unshare_upload(
 ):
     if request.recipient_type == AccessRecipientType.USER:
         if upload.created_by_user_id != user.id and request.recipient_id != user.id:
-            raise HTTPException(status_code=403, detail="Forbidden")
+            raise HTTPException(status_code=403, detail="You can only remove yourself as you are not an owner of upload")
     elif request.recipient_type == AccessRecipientType.ORG:
-        if upload.created_by_user_id != user.id and request.recipient_id != user.org_id:
-            raise HTTPException(status_code=403, detail="Forbidden")
+        if upload.created_by_user_id != user.id:
+            raise HTTPException(status_code=403, detail="Only owner can remove organization from share")
 
     session.exec(
         delete(UploadAccess)
@@ -207,4 +262,3 @@ def unshare_upload(
         .where(UploadAccess.recipient_type == request.recipient_type)
     )
     session.commit()
-    return {"message": "User removed from upload share"}

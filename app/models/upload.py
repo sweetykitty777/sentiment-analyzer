@@ -1,11 +1,6 @@
-import uuid
 from datetime import datetime
 from enum import StrEnum
-from typing import ClassVar
 
-from pydantic import UUID4
-from sqlalchemy import func, select
-from sqlalchemy.orm import column_property, declared_attr
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.user import User
@@ -50,7 +45,7 @@ class Upload(UploadBase, table=True):
     entries: list["UploadEntry"] = Relationship(back_populates="upload")
 
     created_by: User = Relationship(back_populates="uploads")
-    
+
 
 class UploadPublic(UploadBase):
     id: int

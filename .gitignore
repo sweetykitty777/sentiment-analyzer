@@ -108,3 +108,5 @@ venv.bak/
 .idea/*
 
 database.db
+
+.env*local

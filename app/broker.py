@@ -17,7 +17,7 @@ predictor = SentimentPredict()
 
 
 @broker.task
-async def process_upload(upload_id: str):
+async def process_upload(upload_id: int):
     print(f"Processing upload {upload_id}")
 
     with Session(engine) as session:
@@ -31,4 +31,5 @@ async def process_upload(upload_id: str):
         upload = session.get(Upload, upload_id)
         upload.status = UploadStatus.READY
         session.commit()
-        print(f"Upload {upload_id} processed")
+
+    print(f"Upload {upload_id} processed")
