@@ -26,7 +26,10 @@ async def process_upload(upload_id: int):
         ).all()
 
         for entry in entries:
-            entry.sentiment = predictor.predict(entry.text)
+            text = entry.text
+            # remove russian (cyrilic) and grbage symbols
+            text = "".join(filter(lambda x: ord(x) < 128, text))
+            entry.sentiment = predictor.predict(text)
 
         upload = session.get(Upload, upload_id)
         upload.status = UploadStatus.READY

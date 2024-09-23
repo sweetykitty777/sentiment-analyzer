@@ -1,4 +1,5 @@
 import io
+import re
 from enum import StrEnum
 
 import docx
@@ -12,6 +13,7 @@ from app.dependencies import get_session, get_upload_from_path, get_user
 from app.models.upload import (
     Upload,
     UploadEntry,
+    UploadFormat,
     UploadPublic,
     UploadStatus,
     UploadWithEntries,
@@ -115,6 +117,7 @@ def delete_upload_by_id(
 )
 async def upload_file(
     file: UploadFile,
+    format: UploadFormat,
     session: Session = Depends(get_session),
     user: User = Depends(get_user),
 ) -> Upload:
@@ -144,6 +147,29 @@ async def upload_file(
         b = await file.read()
         doc = docx.Document(io.BytesIO(b))
         full_text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+        
+        if format == UploadFormat.INTERVIEW_2:
+            p = re.compile(r"(?P<title>.+)\n+Респондент:\s*(?P<respondent>.+)\nДата интервью:\s*(?P<date>\d{2}\/\d{2}\/\d{4})\n*(?P<qas>[\s\S]+)")
+            qas = re.compile(r"((?P<q>\d+\.\s[^\n]+)\n+(?P<a>[^\n]+\n*))")
+            res = p.match(full_text)
+
+            description = f"{res.group("title")} - {res.group("respondent")} - {res.group("date")}"
+
+
+
+            upload = Upload(name=description, description=description, created_by_user_id=user.id, status=UploadStatus.PENDING)
+            session.add(upload)
+            session.commit()
+            session.refresh(upload)
+
+            for i, qa in enumerate(qas.finditer(res.group("qas"))):
+                entry = UploadEntry(upload_id=upload.id, text=qa.group("a"), sentiment=None, description=qa.group("q"), id=i)
+                session.add(entry)
+            
+            session.commit()
+            session.refresh(upload)
+            await process_upload.kiq(upload_id=upload.id)
+            return upload
 
         # Create a new Upload record
         upload = Upload(
