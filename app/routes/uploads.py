@@ -1,6 +1,7 @@
 import io
 from enum import StrEnum
 
+import docx
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -56,6 +57,7 @@ def get_upload(
             select(Upload)
             .join(UploadAccess)
             .where(UploadAccess.recipient_id == user.organization)
+            .where(Upload.created_by_user_id != user.id)
         ).all()
 
     return list(res) + list(shared_uploads) + list(shared_org_uploads)
@@ -116,27 +118,70 @@ async def upload_file(
     session: Session = Depends(get_session),
     user: User = Depends(get_user),
 ) -> Upload:
-    b = await file.read()
-    df = pd.read_excel(io.BytesIO(b), header=None, index_col=None)
-    df.columns = ["text"]
+    if file.content_type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
+        b = await file.read()
+        df = pd.read_excel(io.BytesIO(b), header=None, index_col=None)
+        df.columns = ["text"]
 
-    upload = Upload(
-        name=file.filename, created_by_user_id=user.id, status=UploadStatus.PENDING
-    )
-    session.add(upload)
-    session.commit()
-    session.refresh(upload)
+        upload = Upload(
+            name=file.filename, created_by_user_id=user.id, status=UploadStatus.PENDING
+        )
+        session.add(upload)
+        session.commit()
+        session.refresh(upload)
 
-    entries = []
-    for i, row in df.iterrows():
-        entry = UploadEntry(upload_id=upload.id, text=row["text"], sentiment=None, id=i)
+        entries = []
+        for i, row in df.iterrows():
+            entry = UploadEntry(upload_id=upload.id, text=row["text"], sentiment=None, id=i)
+            session.add(entry)
+            entries.append(entry)
+        session.commit()
+        session.refresh(upload)
+
+        await process_upload.kiq(upload_id=upload.id)
+        return upload
+    elif file.content_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+        b = await file.read()
+        doc = docx.Document(io.BytesIO(b))
+        full_text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+
+        # Create a new Upload record
+        upload = Upload(
+            name=file.filename, created_by_user_id=user.id, status=UploadStatus.PENDING
+        )
+        session.add(upload)
+        session.commit()
+        session.refresh(upload)
+
+        # Process the Word file content as one single entry
+        entry = UploadEntry(upload_id=upload.id, text=full_text, sentiment=None, id=1)
         session.add(entry)
-        entries.append(entry)
-    session.commit()
-    session.refresh(upload)
+        session.commit()
+        session.refresh(upload)
 
-    await process_upload.kiq(upload_id=upload.id)
-    return upload
+        # Queue processing task
+        await process_upload.kiq(upload_id=upload.id)
+        return upload
+    elif file.content_type in ["text/plain"]:
+        b = await file.read()
+        text = b.decode("utf-8")
+
+        upload = Upload(
+            name=file.filename, created_by_user_id=user.id, status=UploadStatus.PENDING
+        )
+        session.add(upload)
+        session.commit()
+        session.refresh(upload)
+
+        entry = UploadEntry(upload_id=upload.id, text=text, sentiment=None, id=1)
+        session.add(entry)
+        session.commit()
+        session.refresh(upload)
+
+        await process_upload.kiq(upload_id=upload.id)
+        return upload
+    else:
+        raise HTTPException(status_code=400, detail="File type not supported")
 
 
 @router.get(
