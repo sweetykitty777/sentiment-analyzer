@@ -117,7 +117,7 @@ def delete_upload_by_id(
 )
 async def upload_file(
     file: UploadFile,
-    format: UploadFormat,
+    format: UploadFormat = UploadFormat.PLAIN,
     session: Session = Depends(get_session),
     user: User = Depends(get_user),
 ) -> Upload:
