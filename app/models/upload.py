@@ -15,7 +15,7 @@ class UploadEntryBase(SQLModel):
 
 
 class UploadEntry(UploadEntryBase, table=True):
-    upload_id: int = Field(foreign_key="upload.id", primary_key=True)
+    upload_id: int = Field(foreign_key="upload.id", primary_key=True, ondelete="CASCADE")
     upload: "Upload" = Relationship(back_populates="entries")
     description: str | None = None
 
@@ -47,7 +47,7 @@ class Upload(UploadBase, table=True):
     created_at: datetime = Field(default=datetime.now())
     created_by_user_id: str = Field(foreign_key="user.id")
     status: UploadStatus = UploadStatus.PENDING
-    entries: list["UploadEntry"] = Relationship(back_populates="upload")
+    entries: list["UploadEntry"] = Relationship(back_populates="upload", cascade_delete=True)
     format: UploadFormat = UploadFormat.PLAIN
     created_by: User = Relationship(back_populates="uploads")
 
